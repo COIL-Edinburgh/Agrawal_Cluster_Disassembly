@@ -414,7 +414,7 @@ public class Agrawal_Cluster_Disassembly<T extends RealType<T>> implements Comma
             FloatPolygon outlinePoly = outline.getInterpolatedPolygon();
             double feretRatio = clusters[i].getFeretValues()[0]/clusters[i].getFeretValues()[2];
             IJ.log(feretRatio+"");
-                double dist = 60;
+                double dist = 100;
                 for (int n = 0; n < outlinePoly.npoints; n++) {
                     for (int j = 0; j < outlineCluster.npoints; j++) {
                         double disttemp = Math.pow(outlinePoly.xpoints[n] - outlineCluster.xpoints[j], 2) +
@@ -425,7 +425,7 @@ public class Agrawal_Cluster_Disassembly<T extends RealType<T>> implements Comma
                         }
                     }
                 }
-                if (dist < 50 || feretRatio>2) {
+                if (dist < 99 && feretRatio>2) {
                     clusters[i] = null;
                 }
 
@@ -503,7 +503,7 @@ public class Agrawal_Cluster_Disassembly<T extends RealType<T>> implements Comma
         ip.drawString(imp.getTitle(), 50, 50);
 
         for (int i = 0; i < pupae.length; i++) {
-            ip.drawString(letters.get(i), pupae[i].getBounds().x + 50, pupae[i].getBounds().y + 50);
+            ip.drawString(letters.get(i), pupae[i].getBounds().x + 150, pupae[i].getBounds().y + 150);
             ip.draw(pupae[i]);
         }
 
