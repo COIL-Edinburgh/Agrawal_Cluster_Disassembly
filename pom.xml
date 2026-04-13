@@ -13,7 +13,7 @@
 	</parent>
 
 	<groupId>bio.coil</groupId>
-	<artifactId>Agrawal_Pupae_Quantification</artifactId>
+	<artifactId>Agrawal_Cluster_Disassembly</artifactId>
 	<version>2.0.0</version>
 
 	<name>Agrawal Pupae Quantification</name>
@@ -63,22 +63,22 @@
 	</mailingLists>
 
 	<scm>
-		<connection>scm:git:https://github.com/CoilEdinburgh/Agrawal_Pupae_Quantification</connection>
-		<developerConnection>scm:git:git@github.com:CoilEdinburgh/Agrawal_Pupae_Quantification</developerConnection>
+		<connection>scm:git:https://github.com/CoilEdinburgh/Agrawal_Cluster_Disassembly</connection>
+		<developerConnection>scm:git:git@github.com:CoilEdinburgh/Agrawal_Cluster_Disassembly</developerConnection>
 		<tag>HEAD</tag>
-		<url>https://github.com/CoilEdinburgh/Agrawal_Pupae_Quantification</url>
+		<url>https://github.com/CoilEdinburgh/Agrawal_Cluster_Disassembly</url>
 	</scm>
 	<issueManagement>
 		<system>GitHub Issues</system>
-		<url>https://github.com/CoilEdinburgh/Agrawal_Pupae_Quantification/issues</url>
+		<url>https://github.com/CoilEdinburgh/Agrawal_Cluster_Disassembly/issues</url>
 	</issueManagement>
 	<ciManagement>
 		<system>None</system>
 	</ciManagement>
 
 	<properties>
-		<package-name>bio.coil.CoilEdinburgh.Agrawal_Pupae_Quantification</package-name>
-		<main-class>Agrawal_Pupae_Quantification</main-class>
+		<package-name>bio.coil.CoilEdinburgh.Agrawal_Cluster_Disassembly</package-name>
+		<main-class>Agrawal_Cluster_Disassembly</main-class>
 		<license.licenseName>cc0</license.licenseName>
 		<license.copyrightOwners>University of Edinburgh</license.copyrightOwners>
 	</properties>
@@ -102,6 +102,7 @@
 			<groupId>net.imagej</groupId>
 			<artifactId>imagej</artifactId>
 		</dependency>
+
 		<!-- User-facing commands -->
 		<dependency>
 			<groupId>net.imagej</groupId>
@@ -121,6 +122,14 @@
 		<dependency>
 			<groupId>ome</groupId>
 			<artifactId>bio-formats_plugins</artifactId>
+		</dependency>
+
+		<!-- Source: https://mvnrepository.com/artifact/net.imagej/ij1-patcher -->
+		<dependency>
+			<groupId>net.imagej</groupId>
+			<artifactId>ij1-patcher</artifactId>
+			<version>1.2.7</version>
+			<scope>compile</scope>
 		</dependency>
 
 		<dependency>
@@ -156,6 +165,90 @@
 			<artifactId>TransformJ_</artifactId>
 			<version>4.0.0</version>
 		</dependency>
+
+		<!-- Source: https://mvnrepository.com/artifact/net.haesleinhuepf/clij2_ -->
+		<dependency>
+			<groupId>net.haesleinhuepf</groupId>
+			<artifactId>clij2_</artifactId>
+			<version>2.5.3.1</version>
+			<scope>compile</scope>
+		</dependency>
+
+		<!-- Source: https://mvnrepository.com/artifact/net.haesleinhuepf/clij_ -->
+		<dependency>
+			<groupId>net.haesleinhuepf</groupId>
+			<artifactId>clij_</artifactId>
+			<version>1.9.0.1</version>
+			<scope>compile</scope>
+		</dependency>
+
+<!--		&lt;!&ndash; Source: https://mvnrepository.com/artifact/net.clearcontrol/clearcontrol &ndash;&gt;-->
+<!--		<dependency>-->
+<!--			<groupId>net.clearcontrol</groupId>-->
+<!--			<artifactId>clearcontrol</artifactId>-->
+<!--			<version>0.9.0</version>-->
+<!--			<scope>compile</scope>-->
+<!--		</dependency>-->
+
+		<dependency>
+			<groupId>org.jocl</groupId>
+			<artifactId>jocl</artifactId>
+		</dependency>
+<!--		&lt;!&ndash; Source: https://mvnrepository.com/artifact/net.haesleinhuepf/clijx_ &ndash;&gt;-->
+<!--		<dependency>-->
+<!--			<groupId>net.haesleinhuepf</groupId>-->
+<!--			<artifactId>clijx_</artifactId>-->
+<!--			<version>0.32.2.0</version>-->
+<!--			<scope>compile</scope>-->
+<!--		</dependency>-->
+
+<!--		&lt;!&ndash; Source: https://mvnrepository.com/artifact/net.haesleinhuepf/clij2-assistant_ &ndash;&gt;-->
+<!--		<dependency>-->
+<!--			<groupId>net.haesleinhuepf</groupId>-->
+<!--			<artifactId>clij2-assistant_</artifactId>-->
+<!--			<version>2.5.1.4</version>-->
+<!--			<scope>compile</scope>-->
+<!--		</dependency>-->
+
+<!--		&lt;!&ndash; Source: https://mvnrepository.com/artifact/sc.fiji/labkit-pixel-classification &ndash;&gt;-->
+<!--		<dependency>-->
+<!--			<groupId>sc.fiji</groupId>-->
+<!--			<artifactId>labkit-pixel-classification</artifactId>-->
+<!--			<version>0.1.17</version>-->
+<!--			<scope>compile</scope>-->
+<!--		</dependency>-->
+
+<!--		&lt;!&ndash; Source: https://mvnrepository.com/artifact/net.imglib2/imglib2-labkit &ndash;&gt;-->
+<!--		<dependency>-->
+<!--			<groupId>net.imglib2</groupId>-->
+<!--			<artifactId>imglib2-labkit</artifactId>-->
+<!--			<version>0.2.9</version>-->
+<!--			<scope>compile</scope>-->
+<!--		</dependency>-->
+
+		<!-- Source: https://mvnrepository.com/artifact/sc.fiji/labkit-ui -->
+		<dependency>
+			<groupId>sc.fiji</groupId>
+			<artifactId>labkit-ui</artifactId>
+			<version>0.4.0</version>
+			<scope>compile</scope>
+		</dependency>
+
+<!--		&lt;!&ndash; Source: https://mvnrepository.com/artifact/net.haesleinhuepf/clij2-fft_ &ndash;&gt;-->
+<!--		<dependency>-->
+<!--			<groupId>net.haesleinhuepf</groupId>-->
+<!--			<artifactId>clij2-fft_</artifactId>-->
+<!--			<version>2.2.0.22</version>-->
+<!--			<scope>compile</scope>-->
+<!--		</dependency>-->
+
+<!--		&lt;!&ndash; Source: https://mvnrepository.com/artifact/net.haesleinhuepf/clijx-weka_ &ndash;&gt;-->
+<!--		<dependency>-->
+<!--			<groupId>net.haesleinhuepf</groupId>-->
+<!--			<artifactId>clijx-weka_</artifactId>-->
+<!--			<version>0.32.1.1</version>-->
+<!--			<scope>compile</scope>-->
+<!--		</dependency>-->
 
 		<!-- https://mvnrepository.com/artifact/ch.epfl.biop/ijl-utilities-wrappers -->
 		<dependency>
