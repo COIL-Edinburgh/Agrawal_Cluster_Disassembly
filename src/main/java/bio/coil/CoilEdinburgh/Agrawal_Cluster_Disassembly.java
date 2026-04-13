@@ -301,8 +301,8 @@ public class Agrawal_Cluster_Disassembly<T extends RealType<T>> implements Comma
         imp.setT(frame+1);
         //IJ.run(imp, "Subtract Background...", "rolling=50 slice");
         Roi[][] output = new Roi[clusters.length][];
+        IJ.setAutoThreshold(imp, "RenyiEntropy dark stack");
         for (int i = 0; i < clusters.length; i++) {
-            IJ.setAutoThreshold(imp, "RenyiEntropy dark stack");
             imp.setRoi(clusters[i]);
             IJ.run(imp, "Analyze Particles...", "size=10-Infinity pixel circularity=0.0-1.00 add");
             output[i] = roiManager.getRoisAsArray();
@@ -413,8 +413,7 @@ public class Agrawal_Cluster_Disassembly<T extends RealType<T>> implements Comma
             FloatPolygon outlineCluster = clusters[i].getInterpolatedPolygon();
             FloatPolygon outlinePoly = outline.getInterpolatedPolygon();
             double feretRatio = clusters[i].getFeretValues()[0]/clusters[i].getFeretValues()[2];
-            IJ.log(feretRatio+"");
-                double dist = 100;
+            double dist = 100;
                 for (int n = 0; n < outlinePoly.npoints; n++) {
                     for (int j = 0; j < outlineCluster.npoints; j++) {
                         double disttemp = Math.pow(outlinePoly.xpoints[n] - outlineCluster.xpoints[j], 2) +
@@ -556,7 +555,7 @@ public class Agrawal_Cluster_Disassembly<T extends RealType<T>> implements Comma
                 bufferedWriter.newLine();
 
                 StringBuilder heading = new StringBuilder();
-                heading.append("Image,Timepoint, Pupal No,Cluster Area,Marker Area,Mean Cluster Intensity (red),Mean Cluster Intensity (green)" +
+                heading.append("Image,Timepoint, Pupal No,Cluster Area,Marker Area,Mean Cluster Intensity (red),Mean Cluster Intensity (green)," +
                                 "Mean Marker Intensity (red),Mean Marker Intensity (green)");
                 bufferedWriter.write(String.valueOf(heading));//write header 1
                 bufferedWriter.newLine();
