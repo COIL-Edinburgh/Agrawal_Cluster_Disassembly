@@ -189,7 +189,7 @@ public class Agrawal_Cluster_Disassembly<T extends RealType<T>> implements Comma
                 Roi[] cluster = getClusters(clusterMasks, pupa, i);
                 pupae_clusters.add(cluster);
                 //for each cluster measure ares of nuclei
-                Roi[][] greenArea = getNuclei(cluster,split[green], i);
+                Roi[][] greenArea = getMarkers(cluster,split[green], i);
                 greenAreaList.add(mergeArrays(greenArea));
             }
             clusters.add(pupae_clusters);
@@ -296,7 +296,7 @@ public class Agrawal_Cluster_Disassembly<T extends RealType<T>> implements Comma
         }
     }
 
-    private Roi[][] getNuclei(Roi[] clusters, ImagePlus imp, int frame) {
+    private Roi[][] getMarkers(Roi[] clusters, ImagePlus imp, int frame) {
         imp.show();
         imp.setT(frame+1);
         //IJ.run(imp, "Subtract Background...", "rolling=50 slice");
