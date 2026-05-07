@@ -12,6 +12,7 @@ import ij.IJ;
 import ij.ImagePlus;
 import ij.WindowManager;
 import ij.gui.Roi;
+import ij.gui.WaitForUserDialog;
 import ij.plugin.ChannelSplitter;
 import ij.plugin.Concatenator;
 import ij.plugin.Duplicator;
@@ -30,6 +31,7 @@ import net.imagej.ImageJ;
 import net.imagej.ops.OpService;
 import net.imagej.roi.ROIService;
 import net.imglib2.type.numeric.RealType;
+import org.jetbrains.annotations.NotNull;
 import org.scijava.command.Command;
 import org.scijava.plugin.Parameter;
 import org.scijava.plugin.Plugin;
@@ -79,20 +81,17 @@ public class Agrawal_Cluster_Disassembly<T extends RealType<T>> implements Comma
     @Parameter(label = "Open Folder: ", style = "directory")
     public File filePath;
 
-    @Parameter(label = "Open Env Path: ", style = "directory")
-    public File envpath;
+    //@Parameter(label = "Open Env Path: ", style = "directory")
+    //public File envpath;
 
-    @Parameter(label = "Open Model: ", style = "file")
-    public File modelpath;
+    //@Parameter(label = "Open Model: ", style = "file")
+    //public File modelpath;
 
-    @Parameter(label = "Open Classifier: ", style = "file")
-    public File classifier;
+    //@Parameter(label = "Open Classifier: ", style = "file")
+    //public File classifier;
 
     @Parameter(label = "Min Cluster Area: ")
     public int minArea;
-
-    @Parameter(label = "Edit? ")
-    public boolean edit;
 
     RoiManager roiManager;
     double pixelSize;
@@ -142,14 +141,11 @@ public class Agrawal_Cluster_Disassembly<T extends RealType<T>> implements Comma
         greenAreas = new ArrayList<>();
         stats = new ArrayList<>();
         runAnalysis(imp, file, outputImp);
+        IJ.log("Analysis Done. Starting getStats()");
         getStats(imp);
-//        if(edit) {
-//            EditSegmentation ES = new EditSegmentation(imp, roiManager, pupae, clusters);
-//            ES.run();
-//            pupae = ES.pupae;
-//            clusters = ES.clusters;
-//        }
+        IJ.log("Stats done. Creating output Imp");
         outputImp = drawOverlay(imp, outputImp);
+        IJ.log("Output Imp Created. Creating Results file");
         createResultsFile(String.valueOf(Paths.get(String.valueOf(filePath), filename + "_Results.csv")));
         IJ.log(String.valueOf(Paths.get(String.valueOf(filePath), filename + "_Output.tif")));
         IJ.save(outputImp, String.valueOf(Paths.get(String.valueOf(filePath), filename + "_Output.tif")));
@@ -171,12 +167,15 @@ public class Agrawal_Cluster_Disassembly<T extends RealType<T>> implements Comma
             getChannelOrderTif(imp);
         }
 
-        Roi[] pupa_all = segmentPupae(split);
+        //Roi[] pupa_all = segmentPupae(split);
+        Roi[] pupa_all = drawPupae(imp);
         imp.show();
 
-        String input = "input=["+imp.getTitle()+"] segmenter_file=["+ classifier + "] use_gpu=true";
-        IJ.run("Segment Image With Labkit", input);
-        ImagePlus clusterMasks = WindowManager.getCurrentImage();
+        //String input = "input=["+imp.getTitle()+"] segmenter_file=["+ classifier + "] use_gpu=true";
+        //IJ.run("Segment Image With Labkit", input);
+        //ImagePlus[] split = ChannelSplitter.split(imp);
+        ImagePlus clusterMasks = split[red];
+        //ImagePlus clusterMasks = WindowManager.getCurrentImage();
         for(int i =0; i< imp.getNFrames();i++) {
             //segmentPupae(split,i);
             pupae.add(pupa_all);
@@ -186,6 +185,7 @@ public class Agrawal_Cluster_Disassembly<T extends RealType<T>> implements Comma
             for (Roi pupa : pupae.get(i)) {
                 //Segment Clusters
                 //Roi[] cluster = getClusters(split[red], pupa, i);
+                clusterMasks.show();
                 Roi[] cluster = getClusters(clusterMasks, pupa, i);
                 pupae_clusters.add(cluster);
                 //for each cluster measure ares of nuclei
@@ -194,6 +194,7 @@ public class Agrawal_Cluster_Disassembly<T extends RealType<T>> implements Comma
             }
             clusters.add(pupae_clusters);
             greenAreas.add(greenAreaList);
+            IJ.log("Frame: "+ i);
         }
     }
 
@@ -217,6 +218,7 @@ public class Agrawal_Cluster_Disassembly<T extends RealType<T>> implements Comma
         for(int i=0; i< imp.getNFrames();i++) {
             ImagePlus impFrame = new Duplicator().run(imp, 1, 2, 1, 1, i+1, i+1);
             ImagePlus overlay = createOutputImage(impFrame, pupae.get(i), clusters.get(i), greenAreas.get(i));
+            IJ.log("Overlay: "+ i);
             impFrame.close();
             if (outputImp == null) {
                 outputImp = overlay;
@@ -227,37 +229,29 @@ public class Agrawal_Cluster_Disassembly<T extends RealType<T>> implements Comma
         return outputImp;
     }
 
-    private Roi[] segmentPupae(ImagePlus[] split){//}, int i) {
-        //segment pupae
-        nChannels = split.length;
-
-        //split[green].show();
-        //ImagePlus imp = new Duplicator().run(split[red], 1, 2, 1, 1, i+1, i+1);
-        //split[green].setT(i+1);
-        ImagePlus imp  = ZProjector.run(split[green],"Max");
-        Cellpose_Wrapper cpw = new Cellpose_Wrapper(modelpath.getPath(), envpath.getPath(), 1000, imp);
-        cpw.run(true);
- //       pupae = roiManager.getRoisAsArray();
+//    private Roi[] segmentPupae(ImagePlus[] split){//}, int i) {
+//        //segment pupae
+//        nChannels = split.length;
+//        ImagePlus imp  = ZProjector.run(split[green],"Max");
+//        Cellpose_Wrapper cpw = new Cellpose_Wrapper(modelpath.getPath(), envpath.getPath(), 1000, imp);
+//        cpw.run(true);
+//        Roi[] pupaeRois = roiManager.getRoisAsArray();
 //        roiManager.reset();
-//        IJ.run(imp, "Subtract Background...", "rolling=50 slice");
-//        IJ.run(imp, "Gaussian Blur...", "sigma=150");
-//        IJ.setAutoThreshold(imp, "Default dark no-reset");
-//        IJ.run(imp, "Analyze Particles...", "size=500-Infinity pixel show=Masks include slice");
-//        ImagePlus masks = WindowManager.getCurrentImage();
-//        //IJ.run(masks, "Invert", "");
-//        IJ.run(masks, "Options...", "iterations=1 count=1 do=Nothing");
-//        IJ.run(masks, "Watershed", "");
-//        IJ.run( "Analyze Particles...", "size=500-Infinity pixel show=Nothing include add");
-//        masks.changes = false;
-//        masks.close();
-//        imp.changes = false;
-//        imp.close();
+//        pupaeRois = combineRois(pupaeRois, split[red]);
+//        leftToRight(pupaeRois);
+//
+//        roiManager.reset();
+//        return pupaeRois;
+//    }
+
+    private Roi[] drawPupae(ImagePlus imp){
+        WaitForUserDialog drawPupae = new WaitForUserDialog("Draw ROIs around pupae", "Draw ROIs around pupae and press 'T' to add to ROI manager");
+        ImagePlus impZ  = ZProjector.run(imp,"Max");
+        impZ.show();
+        drawPupae.show();
         Roi[] pupaeRois = roiManager.getRoisAsArray();
         roiManager.reset();
-        pupaeRois = combineRois(pupaeRois, split[red]);
         leftToRight(pupaeRois);
-
-        //pupae.add(pupaeRois);
         roiManager.reset();
         return pupaeRois;
     }
@@ -392,18 +386,17 @@ public class Agrawal_Cluster_Disassembly<T extends RealType<T>> implements Comma
     private Roi[] getClusters(ImagePlus imp, Roi pupa, int i) {
 
         imp.show();
-        //IJ.run(imp, "Subtract Background...", "rolling=50 slice");
         imp.setT(i+1);
+        IJ.run(imp, "Subtract Background...", "rolling=50 slice");
         imp.setRoi(pupa);
-        IJ.setAutoThreshold(imp, "Triangle dark");
+        IJ.setAutoThreshold(imp, "Moments dark");
         IJ.run(imp, "Analyze Particles...", "size=" + minArea + "-Infinity pixel circularity=0.0-1.00 add");
-        IJ.run(imp, "Enhance Contrast", "saturated=0.35");
         Roi[] allClusters = roiManager.getRoisAsArray();
         if (allClusters.length == 0) {
             return allClusters;
         }
         roiManager.reset();
-        allClusters = trimClusters(pupa, allClusters);
+        //allClusters = trimClusters(pupa, allClusters);
         return allClusters;
     }
 
@@ -424,7 +417,7 @@ public class Agrawal_Cluster_Disassembly<T extends RealType<T>> implements Comma
                         }
                     }
                 }
-                if (dist < 99 && feretRatio>2) {
+                if ( feretRatio>2) { //dist < 99 &&
                     clusters[i] = null;
                 }
 
@@ -482,6 +475,7 @@ public class Agrawal_Cluster_Disassembly<T extends RealType<T>> implements Comma
                 }
                 frameStats.add(pupaeStats);
             }
+            IJ.log("Stats: "+ i);
             stats.add(frameStats);
         }
     }
@@ -515,6 +509,7 @@ public class Agrawal_Cluster_Disassembly<T extends RealType<T>> implements Comma
             }
         }
 
+        ip.setLineWidth(4);
         for (Roi[] roiArray : greenArea) {
             for (int j = 0; j < roiArray.length; j++) {
                 ip.draw(roiArray[j]);
@@ -528,11 +523,8 @@ public class Agrawal_Cluster_Disassembly<T extends RealType<T>> implements Comma
         ImagePlus[] split = ChannelSplitter.split(imp);
         split[green].show();
         split[red].show();
-        if (nChannels == 2) {
-            //split[red].show();
-            IJ.run("Merge Channels...", "c1=[" + split[red].getTitle() + "] c2=[" + split[green].getTitle() +
+        IJ.run("Merge Channels...", "c1=[" + split[red].getTitle() + "] c2=[" + split[green].getTitle() +
                     "] c5=[" + masks.getTitle() + "] create");
-        }
         return WindowManager.getCurrentImage();
     }
 
@@ -549,10 +541,10 @@ public class Agrawal_Cluster_Disassembly<T extends RealType<T>> implements Comma
                 bufferedWriter.newLine();
                 bufferedWriter.write("Min Cluster Size: " + minArea);
                 bufferedWriter.newLine();
-                bufferedWriter.write("Cellpose model: "+ modelpath.getName());
-                bufferedWriter.newLine();
-                bufferedWriter.write("Labkit model: "+ classifier.getName());
-                bufferedWriter.newLine();
+               // bufferedWriter.write("Cellpose model: "+ modelpath.getName());
+               // bufferedWriter.newLine();
+                //bufferedWriter.write("Labkit model: "+ classifier.getName());
+               // bufferedWriter.newLine();
 
                 StringBuilder heading = new StringBuilder();
                 heading.append("Image,Timepoint, Pupal No,Cluster Area,Marker Area,Mean Cluster Intensity (red),Mean Cluster Intensity (green)," +
