@@ -23,10 +23,7 @@ import ij.process.ImageProcessor;
 import ij.process.LUT;
 import io.scif.services.DatasetIOService;
 import io.scif.services.FormatService;
-import loci.formats.ChannelSeparator;
-import loci.formats.FormatException;
-import loci.plugins.util.ImageProcessorReader;
-import loci.plugins.util.LociPrefs;
+
 import net.imagej.ImageJ;
 import net.imagej.ops.OpService;
 import net.imagej.roi.ROIService;
@@ -126,6 +123,17 @@ public class Agrawal_Cluster_Disassembly<T extends RealType<T>> implements Comma
             if ((file.toString().contains(".tif")||file.toString().contains(".lif")) && !file.toString().contains("Output")) {
                 IJ.run("Bio-Formats Importer", "open=[" + file.getAbsolutePath() + "] autoscale color_mode=Default view=Hyperstack stack_order=XYCZT");
                 ImagePlus imp = WindowManager.getCurrentImage();
+                Roi[] tempPupae = drawPupae(imp);
+                savePupae(tempPupae, file);
+                imp.close();
+            }
+        }
+
+        for (File file : files) {
+            ImagePlus outputImp = null;
+            if ((file.toString().contains(".tif")||file.toString().contains(".lif")) && !file.toString().contains("Output")) {
+                IJ.run("Bio-Formats Importer", "open=[" + file.getAbsolutePath() + "] autoscale color_mode=Default view=Hyperstack stack_order=XYCZT");
+                ImagePlus imp = WindowManager.getCurrentImage();
                 try {
                     runAll(imp, outputImp, file);
                 } catch (IOException e) {
@@ -167,13 +175,9 @@ public class Agrawal_Cluster_Disassembly<T extends RealType<T>> implements Comma
             getChannelOrderTif(imp);
         }
 
-        //Roi[] pupa_all = segmentPupae(split);
-        Roi[] pupa_all = drawPupae(imp);
+        Roi[] pupa_all = openPupae(file);
         imp.show();
 
-        //String input = "input=["+imp.getTitle()+"] segmenter_file=["+ classifier + "] use_gpu=true";
-        //IJ.run("Segment Image With Labkit", input);
-        //ImagePlus[] split = ChannelSplitter.split(imp);
         ImagePlus clusterMasks = split[red];
         //ImagePlus clusterMasks = WindowManager.getCurrentImage();
         for(int i =0; i< imp.getNFrames();i++) {
@@ -229,21 +233,6 @@ public class Agrawal_Cluster_Disassembly<T extends RealType<T>> implements Comma
         return outputImp;
     }
 
-//    private Roi[] segmentPupae(ImagePlus[] split){//}, int i) {
-//        //segment pupae
-//        nChannels = split.length;
-//        ImagePlus imp  = ZProjector.run(split[green],"Max");
-//        Cellpose_Wrapper cpw = new Cellpose_Wrapper(modelpath.getPath(), envpath.getPath(), 1000, imp);
-//        cpw.run(true);
-//        Roi[] pupaeRois = roiManager.getRoisAsArray();
-//        roiManager.reset();
-//        pupaeRois = combineRois(pupaeRois, split[red]);
-//        leftToRight(pupaeRois);
-//
-//        roiManager.reset();
-//        return pupaeRois;
-//    }
-
     private Roi[] drawPupae(ImagePlus imp){
         WaitForUserDialog drawPupae = new WaitForUserDialog("Draw ROIs around pupae", "Draw ROIs around pupae and press 'T' to add to ROI manager");
         ImagePlus impZ  = ZProjector.run(imp,"Max");
@@ -253,7 +242,38 @@ public class Agrawal_Cluster_Disassembly<T extends RealType<T>> implements Comma
         roiManager.reset();
         leftToRight(pupaeRois);
         roiManager.reset();
+        impZ.close();
         return pupaeRois;
+    }
+
+    private void savePupae(Roi[] pupae, File file){
+        roiManager.reset();
+        for (Roi points : pupae) {
+            roiManager.addRoi(points);
+        }
+        String pupaeName = file.getAbsolutePath();
+        String fileExt = ".tif";
+        String newExt = "_roi.zip";
+        if(pupaeName.contains(".lif")){fileExt=".lif";}
+        if (pupae.length<2){newExt = ".roi";}
+        pupaeName = pupaeName.replace(fileExt,newExt);
+        roiManager.save(pupaeName);
+        roiManager.reset();
+    }
+
+    private Roi[] openPupae(File file){
+        String roiFile = file.getAbsolutePath();
+        String fileExt = ".tif";
+        if(roiFile.contains(".lif")){fileExt=".lif";}
+        roiFile = roiFile.replace(fileExt,"_roi.zip");
+        if(new File(roiFile).exists()){
+        roiManager.open(roiFile);}
+        else{
+            roiFile = roiFile.replace("_roi.zip", ".roi");
+            if (new File(roiFile).exists()){
+                roiManager.open(roiFile);}
+        }
+        return roiManager.getRoisAsArray();
     }
 
     private void getChannelOrder(ImagePlus imp) {
