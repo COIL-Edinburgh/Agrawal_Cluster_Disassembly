@@ -120,7 +120,8 @@ public class Agrawal_Cluster_Disassembly<T extends RealType<T>> implements Comma
 
         for (File file : files) {
             ImagePlus outputImp = null;
-            if ((file.toString().contains(".tif")||file.toString().contains(".lif")) && !file.toString().contains("Output")) {
+            if ((file.toString().contains(".tif")||file.toString().contains(".lif")) &&
+                    !file.toString().contains("Output")||!file.toString().contains(".roi")||!file.toString().contains(".zip")) {
                 IJ.run("Bio-Formats Importer", "open=[" + file.getAbsolutePath() + "] autoscale color_mode=Default view=Hyperstack stack_order=XYCZT");
                 ImagePlus imp = WindowManager.getCurrentImage();
                 Roi[] tempPupae = drawPupae(imp);
@@ -131,7 +132,8 @@ public class Agrawal_Cluster_Disassembly<T extends RealType<T>> implements Comma
 
         for (File file : files) {
             ImagePlus outputImp = null;
-            if ((file.toString().contains(".tif")||file.toString().contains(".lif")) && !file.toString().contains("Output")) {
+            if ((file.toString().contains(".tif")||file.toString().contains(".lif")) &&
+                    !file.toString().contains("Output")||!file.toString().contains(".roi")||!file.toString().contains(".zip")) {
                 IJ.run("Bio-Formats Importer", "open=[" + file.getAbsolutePath() + "] autoscale color_mode=Default view=Hyperstack stack_order=XYCZT");
                 ImagePlus imp = WindowManager.getCurrentImage();
                 try {
