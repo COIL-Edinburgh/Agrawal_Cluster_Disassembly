@@ -6,13 +6,14 @@ to give areas of positive and an area of negative signal.
 
 ### Method
 
-- Pupae segmentation is performed using cellpose (user specified environment and model we use version 3.10, and the cyto 
-3 model) to segment a time-projected image of the green channel.
-- Cluster segmentation is then performed by applying a Labkit classifier to the red channel full stack. Clusters are filtered
-based on feret ratio and distance such that cluster with a high feret ratio (>2) that are less than 100 pixels from the pupa
-edge are excluded.
+- Pupae segmentation is performed manually on a maximum time projection of the image, this is done for all images in the folder before
+  analysis is initiated.
+- Cluster segmentation is then performed by applying a rolling ball (50 pixel) background subtration to the red channel and then
+a Moments threshold is applied. Clusters are filtered based on size with a user input Minimum area (we use 50 pixels). 
+- The green signal outline is thresholded based on the max-projection and a Default threshold on the green channel.
 - Areas within the clusters that have green marker signal are next segmented using imageJ thresholding "RenyiEntropy" performed
-on the entire stack. Only ROIs that are greater than 10 pixels in area and within a detected cluster are selected.
+on the entire stack with the outline applied. The outline makes this thresholding more robust to variation in background levels of green signal.
+Only ROIs that are greater than 10 pixels in area and within a detected cluster are selected.
 - Statistics are then calculated per pupa and per timepoint. These are;
   - Cluster Area
   - Marker Area
