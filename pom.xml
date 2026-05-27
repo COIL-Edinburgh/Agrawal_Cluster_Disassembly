@@ -146,13 +146,11 @@
 			<artifactId>jocl</artifactId>
 		</dependency>
 
-		<!-- https://mvnrepository.com/artifact/ch.epfl.biop/ijl-utilities-wrappers -->
 		<dependency>
 			<groupId>ch.epfl.biop</groupId>
 			<artifactId>ijl-utilities-wrappers</artifactId>
 			<version>0.7.10</version>
 		</dependency>
-
 
 	</dependencies>
 
