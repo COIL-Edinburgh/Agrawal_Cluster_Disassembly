@@ -28,12 +28,10 @@ import net.imagej.ImageJ;
 import net.imagej.ops.OpService;
 import net.imagej.roi.ROIService;
 import net.imglib2.type.numeric.RealType;
-import org.jetbrains.annotations.NotNull;
 import org.scijava.command.Command;
 import org.scijava.plugin.Parameter;
 import org.scijava.plugin.Plugin;
 import org.scijava.ui.UIService;
-import sc.fiji.i5d.plugin.Z_Project;
 
 import java.io.IOException;
 
@@ -121,7 +119,7 @@ public class Agrawal_Cluster_Disassembly<T extends RealType<T>> implements Comma
         for (File file : files) {
             ImagePlus outputImp = null;
             if ((file.toString().contains(".tif")||file.toString().contains(".lif")) &&
-                    !file.toString().contains("Output")||!file.toString().contains(".roi")||!file.toString().contains(".zip")) {
+                    !(file.toString().contains("Output")||file.toString().contains(".roi")||file.toString().contains(".zip"))) {
                 IJ.run("Bio-Formats Importer", "open=[" + file.getAbsolutePath() + "] autoscale color_mode=Default view=Hyperstack stack_order=XYCZT");
                 ImagePlus imp = WindowManager.getCurrentImage();
                 Roi[] tempPupae = drawPupae(imp);
@@ -133,7 +131,7 @@ public class Agrawal_Cluster_Disassembly<T extends RealType<T>> implements Comma
         for (File file : files) {
             ImagePlus outputImp = null;
             if ((file.toString().contains(".tif")||file.toString().contains(".lif")) &&
-                    !file.toString().contains("Output")||!file.toString().contains(".roi")||!file.toString().contains(".zip")) {
+                    !(file.toString().contains("Output")||file.toString().contains(".roi")||file.toString().contains(".zip"))) {
                 IJ.run("Bio-Formats Importer", "open=[" + file.getAbsolutePath() + "] autoscale color_mode=Default view=Hyperstack stack_order=XYCZT");
                 ImagePlus imp = WindowManager.getCurrentImage();
                 try {
@@ -180,6 +178,7 @@ public class Agrawal_Cluster_Disassembly<T extends RealType<T>> implements Comma
         Roi[] pupa_all = openPupae(file);
         imp.show();
 
+        Roi outline = getOutline(split[green]);
         ImagePlus clusterMasks = split[red];
         //ImagePlus clusterMasks = WindowManager.getCurrentImage();
         for(int i =0; i< imp.getNFrames();i++) {
@@ -195,7 +194,7 @@ public class Agrawal_Cluster_Disassembly<T extends RealType<T>> implements Comma
                 Roi[] cluster = getClusters(clusterMasks, pupa, i);
                 pupae_clusters.add(cluster);
                 //for each cluster measure ares of nuclei
-                Roi[][] greenArea = getMarkers(cluster,split[green], i);
+                Roi[][] greenArea = getMarkers(cluster,split[green], i,outline);
                 greenAreaList.add(mergeArrays(greenArea));
             }
             clusters.add(pupae_clusters);
@@ -207,9 +206,7 @@ public class Agrawal_Cluster_Disassembly<T extends RealType<T>> implements Comma
     private Roi[] mergeArrays(Roi[][] arrays){
         ArrayList<Roi> outputlist = new ArrayList<>();
         for(Roi[] array:arrays){
-            for (Roi roi:array){
-                outputlist.add(roi);
-            }
+            outputlist.addAll(Arrays.asList(array));
         }
         Roi[] output = new Roi[outputlist.size()];
         for (int i = 0; i< output.length; i++){
@@ -312,11 +309,24 @@ public class Agrawal_Cluster_Disassembly<T extends RealType<T>> implements Comma
         }
     }
 
-    private Roi[][] getMarkers(Roi[] clusters, ImagePlus imp, int frame) {
+    private Roi getOutline(ImagePlus imp){
+        ImagePlus impZ  = ZProjector.run(imp,"Max");
+        impZ.show();
+        IJ.setAutoThreshold(impZ, "Default dark");
+        IJ.run(impZ, "Analyze Particles...", "size=10-Infinity pixel circularity=0.0-1.00 add");
+        Roi[] pupae = roiManager.getRoisAsArray();
+        impZ.close();
+        roiManager.reset();
+        return pupae[0];
+    }
+
+    private Roi[][] getMarkers(Roi[] clusters, ImagePlus imp, int frame, Roi outline) {
+
         imp.show();
         imp.setT(frame+1);
         //IJ.run(imp, "Subtract Background...", "rolling=50 slice");
         Roi[][] output = new Roi[clusters.length][];
+        imp.setRoi(outline);
         IJ.setAutoThreshold(imp, "RenyiEntropy dark stack");
         for (int i = 0; i < clusters.length; i++) {
             imp.setRoi(clusters[i]);
@@ -525,16 +535,16 @@ public class Agrawal_Cluster_Disassembly<T extends RealType<T>> implements Comma
         font = new Font("SansSerif", Font.BOLD, 30);
         ip.setFont(font);
         for (Roi[] roiArray : clusters) {
-            for (int j = 0; j < roiArray.length; j++) {
-                ip.draw(roiArray[j]);
+            for (Roi points : roiArray) {
+                ip.draw(points);
                 //ip.drawString(String.valueOf(j + 1), roiArray[j].getBounds().x, roiArray[j].getBounds().y);
             }
         }
 
         ip.setLineWidth(4);
         for (Roi[] roiArray : greenArea) {
-            for (int j = 0; j < roiArray.length; j++) {
-                ip.draw(roiArray[j]);
+            for (Roi points : roiArray) {
+                ip.draw(points);
                 //ip.drawString(String.valueOf(j + 1), roiArray[j].getBounds().x, roiArray[j].getBounds().y);
             }
         }
@@ -553,7 +563,7 @@ public class Agrawal_Cluster_Disassembly<T extends RealType<T>> implements Comma
     public void createResultsFile(String name) throws IOException {
         Date date = new Date(); // This object contains the current date value
         SimpleDateFormat formatter = new SimpleDateFormat("dd-MM-yyyy, hh:mm:ss");
-        Boolean exists = new File(name).exists();
+        boolean exists = new File(name).exists();
         try {
             FileWriter fileWriter = new FileWriter(name, true);
                 BufferedWriter bufferedWriter = new BufferedWriter(fileWriter);
@@ -568,9 +578,8 @@ public class Agrawal_Cluster_Disassembly<T extends RealType<T>> implements Comma
                 //bufferedWriter.write("Labkit model: "+ classifier.getName());
                // bufferedWriter.newLine();
 
-                StringBuilder heading = new StringBuilder();
-                heading.append("Image,Timepoint, Pupal No,Cluster Area,Marker Area,Mean Cluster Intensity (red),Mean Cluster Intensity (green)," +
-                                "Mean Marker Intensity (red),Mean Marker Intensity (green)");
+                String heading = "Image,Timepoint, Pupal No,Cluster Area,Marker Area,Mean Cluster Intensity (red),Mean Cluster Intensity (green)," +
+                        "Mean Marker Intensity (red),Mean Marker Intensity (green)";
                 bufferedWriter.write(String.valueOf(heading));//write header 1
                 bufferedWriter.newLine();
             }
