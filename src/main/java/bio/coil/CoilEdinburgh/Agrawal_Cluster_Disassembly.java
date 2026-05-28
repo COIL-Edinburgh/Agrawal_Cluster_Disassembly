@@ -76,15 +76,6 @@ public class Agrawal_Cluster_Disassembly<T extends RealType<T>> implements Comma
     @Parameter(label = "Open Folder: ", style = "directory")
     public File filePath;
 
-    //@Parameter(label = "Open Env Path: ", style = "directory")
-    //public File envpath;
-
-    //@Parameter(label = "Open Model: ", style = "file")
-    //public File modelpath;
-
-    //@Parameter(label = "Open Classifier: ", style = "file")
-    //public File classifier;
-
     @Parameter(label = "Min Cluster Area: ")
     public int minArea;
 
@@ -151,10 +142,11 @@ public class Agrawal_Cluster_Disassembly<T extends RealType<T>> implements Comma
         runAnalysis(imp, file, outputImp);
         IJ.log("Analysis Done. Starting getStats()");
         getStats(imp);
-        IJ.log("Stats done. Creating output Imp");
-        outputImp = drawOverlay(imp, outputImp);
-        IJ.log("Output Imp Created. Creating Results file");
+        IJ.log("Stats Done. Creating Results file");
         createResultsFile(String.valueOf(Paths.get(String.valueOf(filePath), filename + "_Results.csv")));
+
+        IJ.log("Results Saved. Creating output Imp");
+        outputImp = drawOverlay(imp, outputImp);
         IJ.log(String.valueOf(Paths.get(String.valueOf(filePath), filename + "_Output.tif")));
         IJ.save(outputImp, String.valueOf(Paths.get(String.valueOf(filePath), filename + "_Output.tif")));
         IJ.run("Close All", " ");
@@ -180,16 +172,15 @@ public class Agrawal_Cluster_Disassembly<T extends RealType<T>> implements Comma
 
         Roi outline = getOutline(split[green]);
         ImagePlus clusterMasks = split[red];
-        //ImagePlus clusterMasks = WindowManager.getCurrentImage();
+
         for(int i =0; i< imp.getNFrames();i++) {
-            //segmentPupae(split,i);
+
             pupae.add(pupa_all);
             ArrayList<Roi[]> pupae_clusters = new ArrayList<>();
             ArrayList<Roi[]> greenAreaList = new ArrayList<>();
             //for each pupae
             for (Roi pupa : pupae.get(i)) {
                 //Segment Clusters
-                //Roi[] cluster = getClusters(split[red], pupa, i);
                 clusterMasks.show();
                 Roi[] cluster = getClusters(clusterMasks, pupa, i);
                 pupae_clusters.add(cluster);
@@ -354,45 +345,6 @@ public class Agrawal_Cluster_Disassembly<T extends RealType<T>> implements Comma
         return allClusters;
     }
 
-    private Roi[] trimClusters(Roi outline, Roi[] clusters){
-
-        for (int i = 0; i< clusters.length;i++){
-            FloatPolygon outlineCluster = clusters[i].getInterpolatedPolygon();
-            FloatPolygon outlinePoly = outline.getInterpolatedPolygon();
-            double feretRatio = clusters[i].getFeretValues()[0]/clusters[i].getFeretValues()[2];
-            double dist = 100;
-                for (int n = 0; n < outlinePoly.npoints; n++) {
-                    for (int j = 0; j < outlineCluster.npoints; j++) {
-                        double disttemp = Math.pow(outlinePoly.xpoints[n] - outlineCluster.xpoints[j], 2) +
-                                Math.pow(outlinePoly.ypoints[n] - outlineCluster.ypoints[j], 2);
-                        disttemp = Math.sqrt(disttemp);
-                        if (disttemp < dist) {
-                            dist = disttemp;
-                        }
-                    }
-                }
-                if ( feretRatio>2) { //dist < 99 &&
-                    clusters[i] = null;
-                }
-
-        }
-        return removeNullClusters(clusters);
-    }
-
-    private Roi[] removeNullClusters(Roi[] array) {
-        ArrayList<Roi> list = new ArrayList<>();
-        for (Roi roi : array) {
-            if (roi != null) {
-                list.add(roi);
-            }
-        }
-        Roi[] output = new Roi[list.size()];
-        for (int i = 0; i < list.size(); i++) {
-            output[i] = list.get(i);
-        }
-        return output;
-    }
-
     private void getStats(ImagePlus imp) {
         ImagePlus[] split = ChannelSplitter.split(imp);
         //Area cluster, area green, intensity green cluster, intensity red cluster, intensity green green, intensity red green
@@ -495,32 +447,38 @@ public class Agrawal_Cluster_Disassembly<T extends RealType<T>> implements Comma
                 bufferedWriter.newLine();
                 bufferedWriter.write("Min Cluster Size: " + minArea);
                 bufferedWriter.newLine();
-               // bufferedWriter.write("Cellpose model: "+ modelpath.getName());
-               // bufferedWriter.newLine();
-                //bufferedWriter.write("Labkit model: "+ classifier.getName());
-               // bufferedWriter.newLine();
-
-                String heading = "Image,Timepoint, Pupal No,Cluster Area,Marker Area,Mean Cluster Intensity (red),Mean Cluster Intensity (green)," +
-                        "Mean Marker Intensity (red),Mean Marker Intensity (green)";
-                bufferedWriter.write(String.valueOf(heading));//write header 1
+                String heading = "";
+                for (int n = 0; n< pupae.get(0).length; n++) {
+                    heading = heading + "Timepoint, Pupal No,Cluster Area,Marker Area,Mean Cluster Intensity (red),Mean Cluster Intensity (green)," +
+                            "Mean Marker Intensity (red),Mean Marker Intensity (green), Area Ratio, Change in area (cluster), Change in area (marker), ,";
+                }
+                bufferedWriter.write(heading);//write header 1
                 bufferedWriter.newLine();
             }
 
-            for (int i = 0; i < stats.size(); i++) {
-                for (int j = 0; j < stats.get(i).size(); j++) {
-                    StringBuilder data = new StringBuilder();
-                    data.append(filename).append(",").append(i);
-                    data.append(",").append(j);
-                    double[] results = stats.get(i).get(j);
-                    data.append(",").append(results[0]);
-                    data.append(",").append(results[3]);
-                    data.append(",").append(results[1]/results[0]);
-                    data.append(",").append(results[2]/results[0]);
-                    data.append(",").append(results[4]/results[3]);
-                    data.append(",").append(results[5]/results[3]);
-                    bufferedWriter.write(String.valueOf(data));
-                    bufferedWriter.newLine();
+
+            for (int t = 0; t < stats.size(); t++) {
+                StringBuilder data = new StringBuilder();
+                for (int j = 0; j < stats.get(t).size(); j++) {
+                    data.append(t); //timepoint
+                    data.append(",").append(j); //pupae number
+                    double[] results = stats.get(t).get(j);
+                    double[] results_t1 =  stats.get(t).get(j);
+                    if(t>0){ results_t1 =  stats.get(t-1).get(j);}
+                    data.append(",").append(results[0]); //cluster area
+                    data.append(",").append(results[3]); //marker area
+                    data.append(",").append(results[1]/results[0]); //mean cluster intensity (red)
+                    data.append(",").append(results[2]/results[0]); //mean cluster intensity (green)
+                    data.append(",").append(results[4]/results[3]); //mean marker intensity (red)
+                    data.append(",").append(results[5]/results[3]); //mean marker intensity (green)
+                    data.append(",").append(results[3]/results[0]); //area ratio (marker/cluster)
+                    data.append(",").append(results[0]-results_t1[0]); //Change in area (cluster)
+                    data.append(",").append(results[3]-results_t1[3]); //Change in area (marker)
+                    data.append(", ,");
+
                 }
+                bufferedWriter.write(String.valueOf(data));
+                bufferedWriter.newLine();
             }
             bufferedWriter.close();
             IJ.log("Results file updated");
