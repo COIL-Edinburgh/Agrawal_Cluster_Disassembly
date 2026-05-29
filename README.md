@@ -23,11 +23,14 @@ selected.
   - Mean Cluster Intensity (green)
   - Mean Marker Intensity (red)
   - Mean Marker Intensity (green)
+  - Area Ratio (marker/cluster)
+  - Change in Cluster Area since previous timepoint
+  - Change in Marker Area since previous timepoint
 
 ### Output
 
 The plugin indexes the pupae left to right(A-Z) and outputs a spreadsheet for the folder with each line detailing the 
 image name,timepoint, pupal number and the statistics given above.
 
-An Output image displaying both channels and an additional channel showing the detected, labelled and measured ROIs is output 
+An Output image displaying both channels and an additional channel showing the detected, labeled and measured ROIs is output 
 for each image stack.
