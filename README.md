@@ -12,7 +12,7 @@ folder before analysis is initiated.
 and then a Moments threshold is applied. Clusters are filtered based on size with a user input Minimum area (we use 50 
 pixels). 
 - The green signal outline is thresholded based on the max-projection and a Default threshold on the green channel.
-- Areas within the clusters that have green marker signal are next segmented using imageJ thresholding "RenyiEntropy" 
+- Areas within the clusters that have green marker signal are next segmented using ImageJ thresholding 'RenyiEntropy' 
 performed on the entire stack with the outline applied. The outline makes this thresholding more robust to variation in
 background levels of green signal. Only ROIs that are greater than 10 pixels in area and within a detected cluster are 
 selected.
