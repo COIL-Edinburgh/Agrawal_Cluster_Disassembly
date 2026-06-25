@@ -8,6 +8,7 @@ to give areas of positive and an area of negative signal.
 
 - Pupae segmentation is performed manually on a maximum time projection of the image, this is done for all images in the
 folder before analysis is initiated.
+- A reference timepoint is requested for each file, this is the timepoint against which area and intensity are normalised.
 - Cluster segmentation is then performed by applying a rolling ball (50 pixel) background subtraction to the red channel
 and then a Moments threshold is applied. Clusters are filtered based on size with a user input Minimum area (we use 50 
 pixels). 
@@ -16,13 +17,26 @@ pixels).
 performed on the entire stack with the outline applied. The outline makes this thresholding more robust to variation in
 background levels of green signal. Only ROIs that are greater than 10 pixels in area and within a detected cluster are 
 selected.
-- Statistics are then calculated per pupa and per timepoint. These are;
+- Statistics are then calculated per pupa and per timepoint along with the thresholds used for cluster and marker segmentation.
+These are;
   - Cluster Area
   - Marker Area
+  - Normalised Cluster Area
+  - Normalised Marker Area
   - Mean Cluster Intensity (red)
   - Mean Cluster Intensity (green)
+  - Total Cluster Intensity (red)
+  - Total Cluster Intensity (green)  
+  - Normalised Cluster Intensity (red)
+  - Normalised Cluster Intensity (green)
+  - Maximum Cluster Intensity (red)
+  - Maximum Cluster Intensity (green)
   - Mean Marker Intensity (red)
   - Mean Marker Intensity (green)
+  - Total Marker Intensity (red)
+  - Total Marker Intensity (green)
+  - Normalised Marker Intensity (red)
+  - Normalised Marker Intensity (green)
   - Area Ratio (marker/cluster)
   - Change in Cluster Area since previous timepoint
   - Change in Marker Area since previous timepoint

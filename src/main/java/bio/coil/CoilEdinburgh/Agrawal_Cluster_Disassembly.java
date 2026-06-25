@@ -11,6 +11,8 @@ package bio.coil.CoilEdinburgh;
 import ij.IJ;
 import ij.ImagePlus;
 import ij.WindowManager;
+import ij.gui.GenericDialog;
+import ij.gui.NonBlockingGenericDialog;
 import ij.gui.Roi;
 import ij.gui.WaitForUserDialog;
 import ij.plugin.ChannelSplitter;
@@ -78,6 +80,12 @@ public class Agrawal_Cluster_Disassembly<T extends RealType<T>> implements Comma
     @Parameter(label = "Min Cluster Area: ")
     public int minArea;
 
+    @Parameter(label = "Red Channel: ")
+    public int red = 1;
+
+    @Parameter(label = "Green Channel: ")
+    public int green = 0;
+
     RoiManager roiManager;
     double pixelSize;
     int nChannels;
@@ -88,13 +96,16 @@ public class Agrawal_Cluster_Disassembly<T extends RealType<T>> implements Comma
     ArrayList<Roi[]> pupae = new ArrayList<>();
     ArrayList<ArrayList<double[]>> stats = new ArrayList<>();
     ArrayList<String> letters;
-    int green = 0;
-    int red = 1;
+    ArrayList<double[]> redThreshold = new ArrayList<>();
+    ArrayList<double[]> greenThreshold = new ArrayList<>();
+    int[] refFrame;
+    File[] files;
 
     @Override
     public void run() {
 
-        File[] files = filePath.listFiles();
+        files = filePath.listFiles();
+        refFrame = new int[files.length];
 
         if (RoiManager.getInstance() != null) {
             roiManager = RoiManager.getInstance();
@@ -107,7 +118,8 @@ public class Agrawal_Cluster_Disassembly<T extends RealType<T>> implements Comma
         assert files != null;
 
         //Open each file in the folder and allow the user to draw the Pupae ROIS
-        for (File file : files) {
+        for (int i=0; i<files.length; i++) {
+            File file = files[i];
             ImagePlus outputImp = null;
             if ((file.toString().contains(".tif")||file.toString().contains(".lif")) &&
                     !(file.toString().contains("Output")||file.toString().contains(".roi")||file.toString().contains(".zip"))) {
@@ -115,19 +127,21 @@ public class Agrawal_Cluster_Disassembly<T extends RealType<T>> implements Comma
                 ImagePlus imp = WindowManager.getCurrentImage();
                 Roi[] tempPupae = drawPupae(imp);
                 savePupae(tempPupae, file);
+                setRefFrame(i);
                 imp.close();
             }
         }
 
         //For each file in the folder use the saved Rois to run the analysis and create the output
-        for (File file : files) {
+        for (int i=0; i<files.length; i++) {
+            File file = files[i];
             ImagePlus outputImp = null;
             if ((file.toString().contains(".tif")||file.toString().contains(".lif")) &&
                     !(file.toString().contains("Output")||file.toString().contains(".roi")||file.toString().contains(".zip"))) {
                 IJ.run("Bio-Formats Importer", "open=[" + file.getAbsolutePath() + "] autoscale color_mode=Default view=Hyperstack stack_order=XYCZT");
                 ImagePlus imp = WindowManager.getCurrentImage();
                 try {
-                    runAll(imp, outputImp, file);
+                    runAll(imp, outputImp, i);
                 } catch (IOException e) {
                     throw new RuntimeException(e);
                 }
@@ -180,9 +194,18 @@ public class Agrawal_Cluster_Disassembly<T extends RealType<T>> implements Comma
         roiManager.reset();
     }
 
+    private void setRefFrame(int i){
+        NonBlockingGenericDialog output = new NonBlockingGenericDialog( "Select the reference frame:");
+        output.addNumericField( "Reference Frame: ", 0);
+        output.showDialog();
+        double refframe = output.getNextNumber();
+        refFrame[i]= (int) refframe;
+    }
+
     //Initializes the ROI and Stats arraylists and then runs the segmentation, gets the stats and outputs the results
     // file and overlay image.
-    private void runAll(ImagePlus imp, ImagePlus outputImp, File file) throws IOException {
+    private void runAll(ImagePlus imp, ImagePlus outputImp, int i) throws IOException {
+        File file = files[i];
         clusters = new ArrayList<>();
         pupae = new ArrayList<>();
         greenAreas = new ArrayList<>();
@@ -194,7 +217,7 @@ public class Agrawal_Cluster_Disassembly<T extends RealType<T>> implements Comma
         getStats(imp);
         IJ.log("Stats Done. Creating Results file");
 
-        createResultsFile(String.valueOf(Paths.get(String.valueOf(filePath), filename + "_Results.csv")));
+        createResultsFile(String.valueOf(Paths.get(String.valueOf(filePath), filename + "_Results.csv")), i);
         IJ.log("Results Saved. Creating output Imp");
 
         outputImp = drawOverlay(imp, outputImp);
@@ -226,7 +249,7 @@ public class Agrawal_Cluster_Disassembly<T extends RealType<T>> implements Comma
         Roi[] pupa_all = openPupae(file);
         imp.show();
         //Gets an outline of the pupae in the green channel (used later to make the marker thresholding less influenced
-        // by number of pupae/ amount of background pixels
+        // by number of pupae/ amount of background pixels)
         Roi outline = getOutline(split[green]);
 
         ImagePlus clusterMasks = split[red];
@@ -237,14 +260,17 @@ public class Agrawal_Cluster_Disassembly<T extends RealType<T>> implements Comma
             pupae.add(pupa_all);
             ArrayList<Roi[]> pupae_clusters = new ArrayList<>();
             ArrayList<Roi[]> greenAreaList = new ArrayList<>();
+            redThreshold.add(new double[pupae.get(i).length]);
+            greenThreshold.add(new double[pupae.get(i).length]);
             //for each pupae
-            for (Roi pupa : pupae.get(i)) {
+            for (int j =0; j< pupae.get(i).length; j++) {
                 //Segment Clusters (red channel)
+                Roi pupa = pupae.get(i)[j];
                 clusterMasks.show();
-                Roi[] cluster = getClusters(clusterMasks, pupa, i);
+                Roi[] cluster = getClusters(clusterMasks, pupa, i, j);
                 pupae_clusters.add(cluster);
                 //for each cluster get the contained marker ROIs (green channel)
-                Roi[][] greenArea = getMarkers(cluster,split[green], i,outline);
+                Roi[][] greenArea = getMarkers(cluster, split[green], i, outline, j);
                 greenAreaList.add(mergeArrays(greenArea));//merges all marker regions within one pupa to a single array
             }
             clusters.add(pupae_clusters); //update the Arraylists for this timepoint
@@ -305,12 +331,13 @@ public class Agrawal_Cluster_Disassembly<T extends RealType<T>> implements Comma
 
     //For a single timepoint and pupa, subtracts background and then sets the pupa ROI before thresholding (Moments).
     //Returns an Roi[] of clusters for that pupa.
-    private Roi[] getClusters(ImagePlus imp, Roi pupa, int i) {
+    private Roi[] getClusters(ImagePlus imp, Roi pupa, int i, int j) {
         imp.show();
         imp.setT(i+1);
         IJ.run(imp, "Subtract Background...", "rolling=50 slice");
         imp.setRoi(pupa);
         IJ.setAutoThreshold(imp, "Moments dark");
+        redThreshold.get(i)[j] = IJ.getProcessor().getAutoThreshold();
         IJ.run(imp, "Analyze Particles...", "size=" + minArea + "-Infinity pixel circularity=0.0-1.00 add");
         Roi[] allClusters = roiManager.getRoisAsArray();
         if (allClusters.length == 0) {
@@ -323,13 +350,14 @@ public class Agrawal_Cluster_Disassembly<T extends RealType<T>> implements Comma
     //For a single timepoint and clusters ROI[] (one of these per pupa), segments the region of maker signal within the
     // clusters. Thresholds within the outline Roi on the whole stack and then for each cluster Roi analyses particles to
     //return thresholded marker within that cluster.
-    private Roi[][] getMarkers(Roi[] clusters, ImagePlus imp, int frame, Roi outline) {
+    private Roi[][] getMarkers(Roi[] clusters, ImagePlus imp, int frame, Roi outline, int j) {
 
         imp.show();
         imp.setT(frame+1);
         Roi[][] output = new Roi[clusters.length][];
         imp.setRoi(outline);
         IJ.setAutoThreshold(imp, "RenyiEntropy dark stack");
+        greenThreshold.get(frame)[j] = IJ.getProcessor().getAutoThreshold();
         for (int i = 0; i < clusters.length; i++) {
             imp.setRoi(clusters[i]);
             IJ.run(imp, "Analyze Particles...", "size=10-Infinity pixel circularity=0.0-1.00 add");
@@ -363,7 +391,7 @@ public class Agrawal_Cluster_Disassembly<T extends RealType<T>> implements Comma
             ArrayList<double[]> frameStats = new ArrayList<>();//for each timepoint create a new ArrayList<>
 
             for (int j=0; j<pupae.get(i).length;j++){ //for each pupa
-                double[] pupaeStats = new double[6]; //create a new double[]
+                double[] pupaeStats = new double[8]; //create a new double[]
 
                 for (int k = 0; k<clusters.get(i).get(j).length; k++){ //for each cluster
                     if(clusters.get(i).get(j).length>0) {
@@ -379,6 +407,12 @@ public class Agrawal_Cluster_Disassembly<T extends RealType<T>> implements Comma
                         ImageProcessor ipr = split[red].getChannelProcessor();
                         ipr.setRoi(clusters.get(i).get(j)[k]);
                         pupaeStats[2] = pupaeStats[2] + ipr.getStatistics().mean * ipr.getStatistics().area;
+                        if(ipg.getStatistics().max > pupaeStats[7]){
+                            pupaeStats[7] = ipg.getStatistics().max;
+                        }
+                        if(ipr.getStatistics().max > pupaeStats[6]){
+                            pupaeStats[6] = ipr.getStatistics().max;
+                        }
                     }
                 }
                 for (int m = 0; m<greenAreas.get(i).get(j).length; m++){ //for each marker region
@@ -405,7 +439,7 @@ public class Agrawal_Cluster_Disassembly<T extends RealType<T>> implements Comma
     }
 
     //Create the Results .csv
-    public void createResultsFile(String name) throws IOException {
+    public void createResultsFile(String name, int i) throws IOException {
         Date date = new Date(); // This object contains the current date value
         SimpleDateFormat formatter = new SimpleDateFormat("dd-MM-yyyy, hh:mm:ss");
         boolean exists = new File(name).exists();
@@ -419,12 +453,22 @@ public class Agrawal_Cluster_Disassembly<T extends RealType<T>> implements Comma
                 bufferedWriter.newLine();
                 bufferedWriter.write("Min Cluster Size: " + minArea); //User input parameter
                 bufferedWriter.newLine();
+                bufferedWriter.write("Reference Frame: " + refFrame[i]); //User input parameter
+                bufferedWriter.newLine();
                 String heading = "";
 
                 //Create column headings
                 for (int n = 0; n< pupae.get(0).length; n++) {
-                    heading = heading + "Timepoint, Pupal No,Cluster Area,Marker Area,Mean Cluster Intensity (red),Mean Cluster Intensity (green)," +
-                            "Mean Marker Intensity (red),Mean Marker Intensity (green), Area Ratio, Change in area (cluster), Change in area (marker), ,";
+                    heading = heading + "Timepoint, Red Threshold, Green Threshold, Pupal No,Cluster Area,Marker Area," +
+                            "Norm Cluster Area,Norm Marker Area," +
+                            "Mean Cluster Intensity (red),Mean Cluster Intensity (green)," +
+                            "Total Cluster Intensity (red),Total Cluster Intensity (green)," +
+                            "Norm Cluster Intensity (red),Norm Cluster Intensity (green)," +
+                            "Max Cluster Intensity (red),Max Cluster Intensity (green)," +
+                            "Mean Marker Intensity (red),Mean Marker Intensity (green), " +
+                            "Total Marker Intensity (red),Total Marker Intensity (green), " +
+                            "Norm Marker Intensity (red),Norm Marker Intensity (green)," +
+                            "Area Ratio, Change in area (cluster), Change in area (marker), ,";
                 }
                 bufferedWriter.write(heading);//write header 1
                 bufferedWriter.newLine();
@@ -436,16 +480,30 @@ public class Agrawal_Cluster_Disassembly<T extends RealType<T>> implements Comma
                 //For each pupa
                 for (int j = 0; j < stats.get(t).size(); j++) {
                     data.append(t); //timepoint
+                    data.append(",").append(redThreshold.get(t)[j]);
+                    data.append(",").append(greenThreshold.get(t)[j]);
                     data.append(",").append(j); //pupae number
                     double[] results = stats.get(t).get(j);
                     double[] results_t1 =  stats.get(t).get(j);
                     if(t>0){ results_t1 =  stats.get(t-1).get(j);}
                     data.append(",").append(results[0]); //cluster area
                     data.append(",").append(results[3]); //marker area
+                    data.append(",").append(results[0]/stats.get(refFrame[i]).get(j)[0]); //norm cluster area
+                    data.append(",").append(results[3]/stats.get(refFrame[i]).get(j)[3]); //norm marker area
                     data.append(",").append(results[1]/results[0]); //mean cluster intensity (red)
                     data.append(",").append(results[2]/results[0]); //mean cluster intensity (green)
+                    data.append(",").append(results[1]); //total cluster intensity (red)
+                    data.append(",").append(results[2]); //total cluster intensity (green)
+                    data.append(",").append(results[1]/stats.get(refFrame[i]).get(j)[1]); //norm cluster intensity (red)
+                    data.append(",").append(results[2]/stats.get(refFrame[i]).get(j)[2]); //norm cluster intensity (green)
+                    data.append(",").append(results[6]); //max cluster intensity (red)
+                    data.append(",").append(results[7]); //max cluster intensity (green)
                     data.append(",").append(results[4]/results[3]); //mean marker intensity (red)
                     data.append(",").append(results[5]/results[3]); //mean marker intensity (green)
+                    data.append(",").append(results[4]); //total marker intensity (red)
+                    data.append(",").append(results[5]); //total marker intensity (green)
+                    data.append(",").append(results[4]/stats.get(refFrame[i]).get(j)[4]); //norm marker intensity (red)
+                    data.append(",").append(results[5]/stats.get(refFrame[i]).get(j)[5]); //norm marker intensity (green)
                     data.append(",").append(results[3]/results[0]); //area ratio (marker/cluster)
                     data.append(",").append(results[0]-results_t1[0]); //Change in area (cluster)
                     data.append(",").append(results[3]-results_t1[3]); //Change in area (marker)
